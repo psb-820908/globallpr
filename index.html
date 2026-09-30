@@ -3,36 +3,423 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Global LPR</title>
+<title>Global LPR Mind Map</title>
 <style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1a2540;
+    --panel-border: #2c3a5e;
+    --text: #f8fafc;
+    --text-dim: #94a3b8;
+    --hub: #6366f1;
+    --waiting: #64748b;
+    --collecting: #3b82f6;
+    --training: #f59e0b;
+    --ready: #22c55e;
+  }
+  * { box-sizing: border-box; }
   body {
     margin: 0;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 2rem 1rem 4rem;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #0f172a;
-    color: #f8fafc;
+    background: var(--bg);
+    color: var(--text);
   }
-  main {
+  header {
+    max-width: 1100px;
+    margin: 0 auto 2rem;
     text-align: center;
-    padding: 2rem;
   }
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+  header h1 {
+    font-size: 1.7rem;
+    margin: 0 0 0.4rem;
   }
-  p {
-    color: #94a3b8;
+  header p {
+    color: var(--text-dim);
     margin: 0;
+    font-size: 0.9rem;
   }
+  header a {
+    color: #93c5fd;
+  }
+
+  .hub {
+    max-width: 320px;
+    margin: 0 auto 1.5rem;
+    background: var(--hub);
+    border-radius: 14px;
+    padding: 1rem 1.4rem;
+    text-align: center;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(99,102,241,0.35);
+  }
+  .bus-line {
+    max-width: 1100px;
+    height: 24px;
+    margin: 0 auto;
+    border-top: 2px solid var(--panel-border);
+    position: relative;
+  }
+
+  .legend {
+    max-width: 1100px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+  }
+  .legend span {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .board {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    width: 2px;
+    height: 24px;
+    background: var(--panel-border);
+  }
+  @media (max-width: 700px) {
+    .bus-line { display: none; }
+    .card::before { display: none; }
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+  .remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.1rem 0.3rem;
+  }
+  .remove-btn:hover { color: #f87171; }
+
+  select.status {
+    margin-top: 0.6rem;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0f172a;
+    cursor: pointer;
+  }
+  select.status.waiting { background: var(--waiting); }
+  select.status.collecting { background: var(--collecting); }
+  select.status.training { background: var(--training); }
+  select.status.ready { background: var(--ready); }
+
+  .subcards {
+    margin-top: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .subcard {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+  }
+  .subcard-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+  }
+  .subcard select.status {
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .add-row {
+    margin-top: 0.7rem;
+    display: flex;
+    gap: 0.4rem;
+  }
+  .add-row input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 0.4rem 0.5rem;
+    color: var(--text);
+    font-size: 0.82rem;
+  }
+  .add-row button {
+    background: #334155;
+    border: none;
+    border-radius: 8px;
+    color: var(--text);
+    padding: 0.4rem 0.7rem;
+    cursor: pointer;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .add-row button:hover { background: #475569; }
+
+  .board-footer {
+    max-width: 1100px;
+    margin: 1.5rem auto 0;
+    text-align: center;
+  }
+  .board-footer button {
+    background: var(--hub);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .board-footer button:hover { filter: brightness(1.1); }
 </style>
 </head>
 <body>
-<main>
-  <h1>Global LPR</h1>
-  <p>Temporary placeholder page — site under construction.</p>
-</main>
+
+<header>
+  <h1>Global License Plate Recognition</h1>
+  <p>자료: <a href="https://drive.google.com/drive/folders/1aa5icYYXu49iXN-W_SxTPcHbQFaJDgcK" target="_blank" rel="noopener">Google Drive 폴더</a> · 상태는 브라우저에 저장됩니다</p>
+</header>
+
+<div class="hub">Global LPR</div>
+<div class="bus-line"></div>
+
+<div class="legend">
+  <span style="background:var(--waiting)">대기 중</span>
+  <span style="background:var(--collecting)">데이터 확보 중</span>
+  <span style="background:var(--training)">학습 준비 중</span>
+  <span style="background:var(--ready)">준비 완료</span>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="board-footer">
+  <button id="addCardBtn">+ 새 카테고리 카드</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "lpr_mindmap_v1";
+
+  var STATUS_LABELS = {
+    waiting: "대기 중",
+    collecting: "데이터 확보 중",
+    training: "학습 준비 중",
+    ready: "준비 완료"
+  };
+  var STATUS_ORDER = ["waiting", "collecting", "training", "ready"];
+
+  var DEFAULT_CARDS = [
+    "글로벌 OCR 데이터셋 & 오픈소스 안내서",
+    "미국",
+    "베트남",
+    "북미·남미",
+    "아시아",
+    "오세아니아",
+    "유럽",
+    "인도",
+    "일본",
+    "중국",
+    "중동·아프리카",
+    "한국"
+  ].map(function (title) {
+    return { id: uid(), title: title, status: "waiting", subcards: [] };
+  });
+
+  function uid() {
+    return Math.random().toString(36).slice(2, 10);
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { cards: DEFAULT_CARDS };
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.cards)) return { cards: DEFAULT_CARDS };
+      return parsed;
+    } catch (e) {
+      return { cards: DEFAULT_CARDS };
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* storage unavailable, ignore */ }
+  }
+
+  var state = load();
+
+  function statusOptionsHtml(current) {
+    return STATUS_ORDER.map(function (key) {
+      return '<option value="' + key + '"' + (key === current ? " selected" : "") + ">" + STATUS_LABELS[key] + "</option>";
+    }).join("");
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function render() {
+    var board = document.getElementById("board");
+    board.innerHTML = "";
+
+    state.cards.forEach(function (card) {
+      var cardEl = document.createElement("div");
+      cardEl.className = "card";
+
+      var subcardsHtml = card.subcards.map(function (sub) {
+        return (
+          '<div class="subcard" data-sub-id="' + sub.id + '">' +
+            '<div class="subcard-top">' +
+              '<span>' + escapeHtml(sub.title) + '</span>' +
+              '<button class="remove-btn" data-action="remove-sub" data-sub="' + sub.id + '">&times;</button>' +
+            '</div>' +
+            '<select class="status ' + sub.status + '" data-action="sub-status" data-sub="' + sub.id + '">' +
+              statusOptionsHtml(sub.status) +
+            '</select>' +
+          '</div>'
+        );
+      }).join("");
+
+      cardEl.innerHTML =
+        '<div class="card-top">' +
+          '<div class="card-title">' + escapeHtml(card.title) + '</div>' +
+          '<button class="remove-btn" data-action="remove-card">&times;</button>' +
+        '</div>' +
+        '<select class="status ' + card.status + '" data-action="card-status">' +
+          statusOptionsHtml(card.status) +
+        '</select>' +
+        '<div class="subcards">' + subcardsHtml + '</div>' +
+        '<div class="add-row">' +
+          '<input type="text" placeholder="세부 카드 추가" data-role="sub-input">' +
+          '<button data-action="add-sub">추가</button>' +
+        '</div>';
+
+      cardEl.dataset.cardId = card.id;
+      board.appendChild(cardEl);
+    });
+  }
+
+  function findCard(id) {
+    return state.cards.find(function (c) { return c.id === id; });
+  }
+
+  document.getElementById("board").addEventListener("click", function (e) {
+    var target = e.target;
+    var action = target.getAttribute("data-action");
+    if (!action) return;
+    var cardEl = target.closest(".card");
+    var cardId = cardEl.dataset.cardId;
+    var card = findCard(cardId);
+    if (!card) return;
+
+    if (action === "remove-card") {
+      if (!confirm('"' + card.title + '" 카드를 삭제할까요?')) return;
+      state.cards = state.cards.filter(function (c) { return c.id !== cardId; });
+      save();
+      render();
+    } else if (action === "add-sub") {
+      var input = cardEl.querySelector('[data-role="sub-input"]');
+      var title = input.value.trim();
+      if (!title) return;
+      card.subcards.push({ id: uid(), title: title, status: "waiting" });
+      input.value = "";
+      save();
+      render();
+    } else if (action === "remove-sub") {
+      var subId = target.getAttribute("data-sub");
+      card.subcards = card.subcards.filter(function (s) { return s.id !== subId; });
+      save();
+      render();
+    }
+  });
+
+  document.getElementById("board").addEventListener("change", function (e) {
+    var target = e.target;
+    var action = target.getAttribute("data-action");
+    if (!action) return;
+    var cardEl = target.closest(".card");
+    var cardId = cardEl.dataset.cardId;
+    var card = findCard(cardId);
+    if (!card) return;
+
+    if (action === "card-status") {
+      card.status = target.value;
+      save();
+      render();
+    } else if (action === "sub-status") {
+      var subId = target.getAttribute("data-sub");
+      var sub = card.subcards.find(function (s) { return s.id === subId; });
+      if (sub) {
+        sub.status = target.value;
+        save();
+        render();
+      }
+    }
+  });
+
+  document.getElementById("board").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.matches('[data-role="sub-input"]')) {
+      e.target.nextElementSibling.click();
+    }
+  });
+
+  document.getElementById("addCardBtn").addEventListener("click", function () {
+    var title = prompt("새 카테고리 이름을 입력하세요");
+    if (!title || !title.trim()) return;
+    state.cards.push({ id: uid(), title: title.trim(), status: "waiting", subcards: [] });
+    save();
+    render();
+  });
+
+  render();
+})();
+</script>
+
 </body>
 </html>
