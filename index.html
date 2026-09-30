@@ -28,7 +28,7 @@
   body.resizing { user-select: none; }
 
   header {
-    max-width: 460px;
+    max-width: 640px;
     margin: 0 auto 1.5rem;
     text-align: center;
   }
@@ -38,7 +38,7 @@
   .hint { font-size: 0.76rem; color: var(--text-dim); }
 
   .hub {
-    max-width: 300px;
+    max-width: 320px;
     margin: 0 auto 1.5rem;
     background: var(--hub);
     border-radius: 14px;
@@ -49,7 +49,7 @@
   }
 
   .overall-gauge {
-    max-width: 460px;
+    max-width: 640px;
     margin: 0 auto 1.5rem;
     text-align: center;
   }
@@ -61,7 +61,7 @@
   .overall-gauge .progress-track { height: 14px; }
 
   .legend {
-    max-width: 460px;
+    max-width: 640px;
     margin: 0 auto 1.5rem;
     display: flex;
     flex-wrap: wrap;
@@ -77,7 +77,7 @@
   }
 
   .board {
-    max-width: 420px;
+    max-width: 640px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -151,8 +151,24 @@
   select.status.training { background: var(--training); }
   select.status.ready { background: var(--ready); }
 
-  .progress-row {
+  .progress-header {
     margin-top: 0.6rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .top-btn {
+    background: rgba(99,102,241,0.15);
+    border: 1px solid var(--hub);
+    color: #c7d2fe;
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .top-btn:hover { background: rgba(99,102,241,0.3); }
+
+  .progress-row {
+    margin-top: 0.4rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -168,9 +184,13 @@
     text-align: right;
     flex-shrink: 0;
   }
-  .progress-track {
+  .progress-track-wrap {
     position: relative;
     margin-top: 0.35rem;
+    padding-bottom: 1.9rem;
+  }
+  .progress-track {
+    position: relative;
     height: 6px;
     border-radius: 999px;
     background: rgba(255,255,255,0.08);
@@ -182,6 +202,57 @@
     background: linear-gradient(90deg, var(--hub), var(--ready));
     border-radius: 999px;
   }
+  .mark-btn {
+    position: absolute;
+    top: 100%;
+    margin-top: 6px;
+    transform: translate(-50%, 0);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--hub);
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.5);
+    z-index: 2;
+  }
+  .mark-btn:hover { filter: brightness(1.15); }
+  .mark-form {
+    position: absolute;
+    top: 100%;
+    margin-top: 4px;
+    transform: translate(-50%, 0);
+    display: flex;
+    gap: 0.3rem;
+    background: var(--panel);
+    border: 1px solid var(--hub);
+    border-radius: 8px;
+    padding: 0.35rem;
+    z-index: 3;
+    width: max-content;
+    max-width: 240px;
+  }
+  .mark-form input {
+    width: 140px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 0.3rem 0.4rem;
+    color: var(--text);
+    font-size: 0.78rem;
+  }
+  .mark-form button {
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 0.3rem 0.5rem;
+  }
+  .mark-form .confirm { background: var(--ready); color: #0f172a; font-weight: 700; }
+  .mark-form .cancel { background: #334155; color: var(--text); }
 
   .milestones {
     margin-top: 0.6rem;
@@ -434,8 +505,19 @@
     return state.cards.find(function (c) { return c.id === id; });
   }
 
+  function moveCardToTop(id) {
+    var idx = state.cards.findIndex(function (c) { return c.id === id; });
+    if (idx <= 0) return;
+    var card = state.cards.splice(idx, 1)[0];
+    state.cards.unshift(card);
+  }
+
   var board = document.getElementById("board");
   var draggedEl = null;
+
+  // transient (not persisted) UI state for the "reached a 5% mark" button/form
+  var pendingMarks = {}; // cardId -> percent waiting for a "+" button
+  var openMarkForms = {}; // cardId -> percent currently being typed into
 
   function reorderStateFromDom() {
     var ids = Array.prototype.map.call(board.querySelectorAll(".card"), function (el) {
@@ -480,6 +562,22 @@
           );
         }).join("");
 
+      var markPercent = openMarkForms.hasOwnProperty(card.id) ? openMarkForms[card.id] : pendingMarks[card.id];
+      var markHtml = "";
+      if (typeof markPercent === "number") {
+        if (openMarkForms.hasOwnProperty(card.id)) {
+          markHtml =
+            '<div class="mark-form" style="left:' + markPercent + '%">' +
+              '<input type="text" placeholder="' + markPercent + '% 달성 내용" data-role="mark-input" data-percent="' + markPercent + '">' +
+              '<button class="confirm" data-action="mark-confirm" data-percent="' + markPercent + '">✓</button>' +
+              '<button class="cancel" data-action="mark-cancel">&times;</button>' +
+            '</div>';
+        } else {
+          markHtml =
+            '<button class="mark-btn" style="left:' + markPercent + '%" data-action="mark-open" data-percent="' + markPercent + '" title="' + markPercent + '% 달성 기록 추가">+</button>';
+        }
+      }
+
       cardEl.innerHTML =
         '<div class="card-top">' +
           '<div class="card-title">' + escapeHtml(card.title) + '</div>' +
@@ -489,11 +587,17 @@
           '<select class="status ' + card.status + '" data-action="card-status">' +
             statusOptionsHtml(card.status) +
           '</select>' +
+          '<div class="progress-header">' +
+            '<button class="top-btn" data-action="move-top">▲ 맨 위로</button>' +
+          '</div>' +
           '<div class="progress-row">' +
             '<input type="range" min="0" max="100" value="' + card.progress + '" data-action="card-progress">' +
             '<span class="progress-value">' + card.progress + '%</span>' +
           '</div>' +
-          '<div class="progress-track"><div class="progress-fill" style="width:' + card.progress + '%"></div></div>' +
+          '<div class="progress-track-wrap">' +
+            '<div class="progress-track"><div class="progress-fill" style="width:' + card.progress + '%"></div></div>' +
+            markHtml +
+          '</div>' +
           '<div class="milestones">' + milestonesHtml + '</div>' +
           '<div class="subcards">' + subcardsHtml + '</div>' +
           '<div class="add-row">' +
@@ -597,6 +701,30 @@
       card.milestones = card.milestones.filter(function (m) { return m.id !== milestoneId; });
       save();
       render();
+    } else if (action === "move-top") {
+      moveCardToTop(card.id);
+      save();
+      render();
+    } else if (action === "mark-open") {
+      var openPercent = Number(target.getAttribute("data-percent"));
+      openMarkForms[card.id] = openPercent;
+      render();
+      var reopened = board.querySelector('[data-role="mark-input"]');
+      if (reopened) reopened.focus();
+    } else if (action === "mark-cancel") {
+      delete openMarkForms[card.id];
+      render();
+    } else if (action === "mark-confirm") {
+      var confirmPercent = Number(target.getAttribute("data-percent"));
+      var noteInput = cardEl.querySelector('[data-role="mark-input"]');
+      var noteText = noteInput ? noteInput.value.trim() : "";
+      if (!noteText) { noteInput && noteInput.focus(); return; }
+      card.milestones.push({ id: uid(), percent: confirmPercent, note: noteText });
+      delete pendingMarks[card.id];
+      delete openMarkForms[card.id];
+      moveCardToTop(card.id);
+      save();
+      render();
     }
   });
 
@@ -632,14 +760,10 @@
     } else if (action === "card-progress") {
       var value = Number(target.value);
       card.progress = value;
-      if (value > 0 && value % 5 === 0) {
-        var already = card.milestones.some(function (m) { return m.percent === value; });
-        if (!already) {
-          var note = prompt(card.title + " — " + value + "% 달성! 이 지점에서 달성한 내용을 적어주세요 (취소 시 기록하지 않음)");
-          if (note && note.trim()) {
-            card.milestones.push({ id: uid(), percent: value, note: note.trim() });
-          }
-        }
+      if (value > 0 && value % 5 === 0 && !card.milestones.some(function (m) { return m.percent === value; })) {
+        pendingMarks[card.id] = value;
+      } else {
+        delete pendingMarks[card.id];
       }
       save();
       render();
@@ -649,6 +773,10 @@
   board.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && e.target.matches('[data-role="sub-input"]')) {
       e.target.nextElementSibling.click();
+    } else if (e.key === "Enter" && e.target.matches('[data-role="mark-input"]')) {
+      e.target.parentElement.querySelector(".confirm").click();
+    } else if (e.key === "Escape" && e.target.matches('[data-role="mark-input"]')) {
+      e.target.parentElement.querySelector(".cancel").click();
     }
   });
 
