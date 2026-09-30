@@ -328,20 +328,34 @@
     ready: "준비 완료"
   };
   var STATUS_ORDER = ["waiting", "collecting", "training", "ready"];
+  var PRIORITY_ORDER = ["한국", "중국", "유럽", "미국"];
+
+  function sortCards(cards) {
+    return cards.slice().sort(function (a, b) {
+      var ai = PRIORITY_ORDER.indexOf(a.title);
+      var bi = PRIORITY_ORDER.indexOf(b.title);
+      if (ai !== -1 || bi !== -1) {
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      }
+      return a.title.localeCompare(b.title, "ko");
+    });
+  }
 
   var DEFAULT_CARDS = [
-    "글로벌 OCR 데이터셋 & 오픈소스 안내서",
+    "한국",
+    "중국",
+    "유럽",
     "미국",
+    "글로벌 OCR 데이터셋 & 오픈소스 안내서",
     "베트남",
     "북미·남미",
     "아시아",
     "오세아니아",
-    "유럽",
     "인도",
     "일본",
-    "중국",
-    "중동·아프리카",
-    "한국"
+    "중동·아프리카"
   ].map(function (title) {
     return { id: uid(), title: title, status: "waiting", progress: 0, milestones: [], subcards: [] };
   });
@@ -398,7 +412,7 @@
     var board = document.getElementById("board");
     board.innerHTML = "";
 
-    state.cards.forEach(function (card) {
+    sortCards(state.cards).forEach(function (card) {
       var cardEl = document.createElement("div");
       cardEl.className = "card";
 
