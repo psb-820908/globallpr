@@ -84,18 +84,11 @@
     gap: 0;
   }
 
-  .card {
+  .card-group {
     position: relative;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 1rem;
     margin-top: 24px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
-  .card::before {
+  .card-group::before {
     content: "";
     position: absolute;
     top: -24px;
@@ -104,9 +97,18 @@
     height: 24px;
     background: var(--panel-border);
   }
-  .card.drag-over-top { box-shadow: 0 -3px 0 0 var(--hub); }
-  .card.drag-over-bottom { box-shadow: 0 3px 0 0 var(--hub); }
-  .card.dragging-card { opacity: 0.4; }
+  .card-group.dragging-card { opacity: 0.4; }
+
+  .card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
   .card-top {
     display: flex;
@@ -254,30 +256,54 @@
   .mark-form .confirm { background: var(--ready); color: #0f172a; font-weight: 700; }
   .mark-form .cancel { background: #334155; color: var(--text); }
 
-  .milestones {
-    margin-top: 0.6rem;
+  .branch {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    align-items: center;
   }
-  .milestone {
-    position: relative;
-    margin-left: 0.6rem;
-    padding: 0.35rem 0.5rem 0.35rem 0.7rem;
-    border-left: 2px solid var(--hub);
-    background: rgba(99,102,241,0.08);
-    border-radius: 0 6px 6px 0;
-    font-size: 0.78rem;
+  .branch-stem {
+    width: 2px;
+    height: 18px;
+    background: var(--panel-border);
+  }
+  .branch-nodes {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.9rem 1rem;
+    width: 100%;
+    padding-top: 18px;
+    border-top: 2px solid var(--panel-border);
   }
-  .milestone .tag {
+  .milestone-node {
+    position: relative;
+    max-width: 190px;
+    background: rgba(99,102,241,0.1);
+    border: 1px solid var(--hub);
+    border-radius: 10px;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.78rem;
+    text-align: left;
+  }
+  .milestone-node::before {
+    content: "";
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    width: 2px;
+    height: 18px;
+    background: var(--panel-border);
+  }
+  .milestone-node .tag {
+    display: block;
     color: #a5b4fc;
     font-weight: 700;
-    margin-right: 0.35rem;
-    white-space: nowrap;
+    margin-bottom: 0.2rem;
+  }
+  .milestone-node .remove-btn {
+    position: absolute;
+    top: 0.1rem;
+    right: 0.2rem;
   }
 
   .subcards {
@@ -520,7 +546,7 @@
   var openMarkForms = {}; // cardId -> percent currently being typed into
 
   function reorderStateFromDom() {
-    var ids = Array.prototype.map.call(board.querySelectorAll(".card"), function (el) {
+    var ids = Array.prototype.map.call(board.querySelectorAll(".card-group"), function (el) {
       return el.dataset.cardId;
     });
     state.cards.sort(function (a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
@@ -530,10 +556,13 @@
     board.innerHTML = "";
 
     state.cards.forEach(function (card) {
+      var groupEl = document.createElement("div");
+      groupEl.className = "card-group";
+      groupEl.dataset.cardId = card.id;
+      groupEl.draggable = true;
+
       var cardEl = document.createElement("div");
       cardEl.className = "card";
-      cardEl.dataset.cardId = card.id;
-      cardEl.draggable = true;
       if (card.height > 0) cardEl.style.height = card.height + "px";
 
       var subcardsHtml = card.subcards.map(function (sub) {
@@ -550,17 +579,16 @@
         );
       }).join("");
 
-      var milestonesHtml = card.milestones
-        .slice()
-        .sort(function (a, b) { return a.percent - b.percent; })
-        .map(function (m) {
-          return (
-            '<div class="milestone">' +
-              '<div><span class="tag">' + m.percent + '%</span>' + escapeHtml(m.note) + '</div>' +
-              '<button class="remove-btn" data-action="remove-milestone" data-milestone="' + m.id + '">&times;</button>' +
-            '</div>'
-          );
-        }).join("");
+      var sortedMilestones = card.milestones.slice().sort(function (a, b) { return a.percent - b.percent; });
+      var milestoneNodesHtml = sortedMilestones.map(function (m) {
+        return (
+          '<div class="milestone-node">' +
+            '<span class="tag">' + m.percent + '%</span>' +
+            escapeHtml(m.note) +
+            '<button class="remove-btn" data-action="remove-milestone" data-milestone="' + m.id + '">&times;</button>' +
+          '</div>'
+        );
+      }).join("");
 
       var markPercent = openMarkForms.hasOwnProperty(card.id) ? openMarkForms[card.id] : pendingMarks[card.id];
       var markHtml = "";
@@ -598,7 +626,6 @@
             '<div class="progress-track"><div class="progress-fill" style="width:' + card.progress + '%"></div></div>' +
             markHtml +
           '</div>' +
-          '<div class="milestones">' + milestonesHtml + '</div>' +
           '<div class="subcards">' + subcardsHtml + '</div>' +
           '<div class="add-row">' +
             '<input type="text" placeholder="세부 카드 추가" data-role="sub-input">' +
@@ -607,7 +634,18 @@
         '</div>' +
         '<div class="resize-handle" data-role="resize"></div>';
 
-      board.appendChild(cardEl);
+      groupEl.appendChild(cardEl);
+
+      if (sortedMilestones.length > 0) {
+        var branchEl = document.createElement("div");
+        branchEl.className = "branch";
+        branchEl.innerHTML =
+          '<div class="branch-stem"></div>' +
+          '<div class="branch-nodes">' + milestoneNodesHtml + '</div>';
+        groupEl.appendChild(branchEl);
+      }
+
+      board.appendChild(groupEl);
     });
 
     updateOverallGauge();
@@ -616,16 +654,16 @@
   // ---- drag to reorder (HTML5 DnD) ----
   board.addEventListener("dragstart", function (e) {
     var handle = e.target.closest(".card-top");
-    var cardEl = e.target.closest(".card");
-    if (!handle || !cardEl) { e.preventDefault(); return; }
-    draggedEl = cardEl;
-    cardEl.classList.add("dragging-card");
+    var groupEl = e.target.closest(".card-group");
+    if (!handle || !groupEl) { e.preventDefault(); return; }
+    draggedEl = groupEl;
+    groupEl.classList.add("dragging-card");
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", cardEl.dataset.cardId);
+    e.dataTransfer.setData("text/plain", groupEl.dataset.cardId);
   });
 
   board.addEventListener("dragover", function (e) {
-    var targetEl = e.target.closest(".card");
+    var targetEl = e.target.closest(".card-group");
     if (!draggedEl || !targetEl || targetEl === draggedEl) return;
     e.preventDefault();
     var rect = targetEl.getBoundingClientRect();
@@ -647,7 +685,8 @@
     if (!handle) return;
     e.preventDefault();
     var cardEl = handle.closest(".card");
-    var card = findCard(cardEl.dataset.cardId);
+    var groupEl = handle.closest(".card-group");
+    var card = findCard(groupEl.dataset.cardId);
     if (!card) return;
     var startY = e.clientY;
     var startHeight = cardEl.getBoundingClientRect().height;
@@ -674,9 +713,11 @@
     var target = e.target;
     var action = target.getAttribute("data-action");
     if (!action) return;
-    var cardEl = target.closest(".card");
-    var card = findCard(cardEl.dataset.cardId);
+    var groupEl = target.closest(".card-group");
+    if (!groupEl) return;
+    var card = findCard(groupEl.dataset.cardId);
     if (!card) return;
+    var cardEl = groupEl.querySelector(".card");
 
     if (action === "remove-card") {
       if (!confirm('"' + card.title + '" 카드를 삭제할까요?')) return;
@@ -741,8 +782,9 @@
     var target = e.target;
     var action = target.getAttribute("data-action");
     if (!action) return;
-    var cardEl = target.closest(".card");
-    var card = findCard(cardEl.dataset.cardId);
+    var groupEl = target.closest(".card-group");
+    if (!groupEl) return;
+    var card = findCard(groupEl.dataset.cardId);
     if (!card) return;
 
     if (action === "card-status") {
