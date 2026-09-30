@@ -144,6 +144,78 @@
   select.status.training { background: var(--training); }
   select.status.ready { background: var(--ready); }
 
+  .progress-row {
+    margin-top: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .progress-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--hub);
+  }
+  .progress-row .progress-value {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    width: 2.6em;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .progress-track {
+    position: relative;
+    margin-top: 0.35rem;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    background-image: repeating-linear-gradient(to right, rgba(255,255,255,0.18) 0, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 5%);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--hub), var(--ready));
+    border-radius: 999px;
+  }
+
+  .milestones {
+    margin-top: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .milestone {
+    position: relative;
+    margin-left: 0.6rem;
+    padding: 0.35rem 0.5rem 0.35rem 0.7rem;
+    border-left: 2px solid var(--hub);
+    background: rgba(99,102,241,0.08);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.78rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+  .milestone .tag {
+    color: #a5b4fc;
+    font-weight: 700;
+    margin-right: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .overall-gauge {
+    max-width: 500px;
+    margin: 0 auto 1.5rem;
+    text-align: center;
+  }
+  .overall-gauge .label {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+  .overall-gauge .progress-track {
+    height: 14px;
+  }
+
   .subcards {
     margin-top: 0.8rem;
     display: flex;
@@ -222,6 +294,12 @@
 </header>
 
 <div class="hub">Global LPR</div>
+
+<div class="overall-gauge">
+  <div class="label">전체 완성도 (목표 100) — <span id="overallPct">0%</span></div>
+  <div class="progress-track"><div class="progress-fill" id="overallFill" style="width:0%"></div></div>
+</div>
+
 <div class="bus-line"></div>
 
 <div class="legend">
@@ -265,7 +343,7 @@
     "중동·아프리카",
     "한국"
   ].map(function (title) {
-    return { id: uid(), title: title, status: "waiting", subcards: [] };
+    return { id: uid(), title: title, status: "waiting", progress: 0, milestones: [], subcards: [] };
   });
 
   function uid() {
@@ -278,6 +356,10 @@
       if (!raw) return { cards: DEFAULT_CARDS };
       var parsed = JSON.parse(raw);
       if (!parsed || !Array.isArray(parsed.cards)) return { cards: DEFAULT_CARDS };
+      parsed.cards.forEach(function (c) {
+        if (typeof c.progress !== "number") c.progress = 0;
+        if (!Array.isArray(c.milestones)) c.milestones = [];
+      });
       return parsed;
     } catch (e) {
       return { cards: DEFAULT_CARDS };
@@ -304,6 +386,14 @@
     return div.innerHTML;
   }
 
+  function updateOverallGauge() {
+    var avg = state.cards.length
+      ? Math.round(state.cards.reduce(function (sum, c) { return sum + c.progress; }, 0) / state.cards.length)
+      : 0;
+    document.getElementById("overallPct").textContent = avg + "%";
+    document.getElementById("overallFill").style.width = avg + "%";
+  }
+
   function render() {
     var board = document.getElementById("board");
     board.innerHTML = "";
@@ -326,6 +416,18 @@
         );
       }).join("");
 
+      var milestonesHtml = card.milestones
+        .slice()
+        .sort(function (a, b) { return a.percent - b.percent; })
+        .map(function (m) {
+          return (
+            '<div class="milestone">' +
+              '<div><span class="tag">' + m.percent + '%</span>' + escapeHtml(m.note) + '</div>' +
+              '<button class="remove-btn" data-action="remove-milestone" data-milestone="' + m.id + '">&times;</button>' +
+            '</div>'
+          );
+        }).join("");
+
       cardEl.innerHTML =
         '<div class="card-top">' +
           '<div class="card-title">' + escapeHtml(card.title) + '</div>' +
@@ -334,6 +436,12 @@
         '<select class="status ' + card.status + '" data-action="card-status">' +
           statusOptionsHtml(card.status) +
         '</select>' +
+        '<div class="progress-row">' +
+          '<input type="range" min="0" max="100" value="' + card.progress + '" data-action="card-progress">' +
+          '<span class="progress-value">' + card.progress + '%</span>' +
+        '</div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + card.progress + '%"></div></div>' +
+        '<div class="milestones">' + milestonesHtml + '</div>' +
         '<div class="subcards">' + subcardsHtml + '</div>' +
         '<div class="add-row">' +
           '<input type="text" placeholder="세부 카드 추가" data-role="sub-input">' +
@@ -343,6 +451,8 @@
       cardEl.dataset.cardId = card.id;
       board.appendChild(cardEl);
     });
+
+    updateOverallGauge();
   }
 
   function findCard(id) {
@@ -376,7 +486,21 @@
       card.subcards = card.subcards.filter(function (s) { return s.id !== subId; });
       save();
       render();
+    } else if (action === "remove-milestone") {
+      var milestoneId = target.getAttribute("data-milestone");
+      card.milestones = card.milestones.filter(function (m) { return m.id !== milestoneId; });
+      save();
+      render();
     }
+  });
+
+  document.getElementById("board").addEventListener("input", function (e) {
+    var target = e.target;
+    if (target.getAttribute("data-action") !== "card-progress") return;
+    var cardEl = target.closest(".card");
+    var value = Number(target.value);
+    cardEl.querySelector(".progress-value").textContent = value + "%";
+    cardEl.querySelector(".progress-fill").style.width = value + "%";
   });
 
   document.getElementById("board").addEventListener("change", function (e) {
@@ -400,6 +524,20 @@
         save();
         render();
       }
+    } else if (action === "card-progress") {
+      var value = Number(target.value);
+      card.progress = value;
+      if (value > 0 && value % 5 === 0) {
+        var already = card.milestones.some(function (m) { return m.percent === value; });
+        if (!already) {
+          var note = prompt(card.title + " — " + value + "% 달성! 이 지점에서 달성한 내용을 적어주세요 (취소 시 기록하지 않음)");
+          if (note && note.trim()) {
+            card.milestones.push({ id: uid(), percent: value, note: note.trim() });
+          }
+        }
+      }
+      save();
+      render();
     }
   });
 
@@ -412,7 +550,7 @@
   document.getElementById("addCardBtn").addEventListener("click", function () {
     var title = prompt("새 카테고리 이름을 입력하세요");
     if (!title || !title.trim()) return;
-    state.cards.push({ id: uid(), title: title.trim(), status: "waiting", subcards: [] });
+    state.cards.push({ id: uid(), title: title.trim(), status: "waiting", progress: 0, milestones: [], subcards: [] });
     save();
     render();
   });
