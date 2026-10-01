@@ -306,58 +306,6 @@
     right: 0.2rem;
   }
 
-  .subcards {
-    margin-top: 0.8rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .subcard {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 0.5rem 0.6rem;
-  }
-  .subcard-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.85rem;
-  }
-  .subcard select.status {
-    margin-top: 0.4rem;
-    padding: 0.3rem 0.4rem;
-    font-size: 0.75rem;
-  }
-
-  .add-row {
-    margin-top: 0.7rem;
-    display: flex;
-    gap: 0.4rem;
-  }
-  .add-row input {
-    flex: 1;
-    min-width: 0;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 0.4rem 0.5rem;
-    color: var(--text);
-    font-size: 0.82rem;
-  }
-  .add-row button {
-    background: #334155;
-    border: none;
-    border-radius: 8px;
-    color: var(--text);
-    padding: 0.4rem 0.7rem;
-    cursor: pointer;
-    font-size: 0.82rem;
-    white-space: nowrap;
-  }
-  .add-row button:hover { background: #475569; }
-
   .resize-handle {
     align-self: center;
     width: 40px;
@@ -401,7 +349,6 @@
 
 <header>
   <h1>Global License Plate Recognition</h1>
-  <p>자료: <a href="https://drive.google.com/drive/folders/1aa5icYYXu49iXN-W_SxTPcHbQFaJDgcK" target="_blank" rel="noopener">Google Drive 폴더</a></p>
   <p class="hint">카드 제목을 드래그해서 순서를 바꾸고, 카드 아래 손잡이를 끌어서 높이를 조절할 수 있습니다.</p>
 </header>
 
@@ -472,8 +419,7 @@
       status: "waiting",
       progress: 0,
       height: DEFAULT_HEIGHT,
-      milestones: [],
-      subcards: []
+      milestones: []
     };
   }
 
@@ -491,7 +437,6 @@
         if (typeof c.progress !== "number") c.progress = 0;
         if (typeof c.height !== "number") c.height = DEFAULT_HEIGHT;
         if (!Array.isArray(c.milestones)) c.milestones = [];
-        if (!Array.isArray(c.subcards)) c.subcards = [];
       });
       return parsed;
     } catch (e) {
@@ -565,20 +510,6 @@
       cardEl.className = "card";
       if (card.height > 0) cardEl.style.height = card.height + "px";
 
-      var subcardsHtml = card.subcards.map(function (sub) {
-        return (
-          '<div class="subcard" data-sub-id="' + sub.id + '">' +
-            '<div class="subcard-top">' +
-              '<span>' + escapeHtml(sub.title) + '</span>' +
-              '<button class="remove-btn" data-action="remove-sub" data-sub="' + sub.id + '">&times;</button>' +
-            '</div>' +
-            '<select class="status ' + sub.status + '" data-action="sub-status" data-sub="' + sub.id + '">' +
-              statusOptionsHtml(sub.status) +
-            '</select>' +
-          '</div>'
-        );
-      }).join("");
-
       var sortedMilestones = card.milestones.slice().sort(function (a, b) { return a.percent - b.percent; });
       var milestoneNodesHtml = sortedMilestones.map(function (m) {
         return (
@@ -625,11 +556,6 @@
           '<div class="progress-track-wrap">' +
             '<div class="progress-track"><div class="progress-fill" style="width:' + card.progress + '%"></div></div>' +
             markHtml +
-          '</div>' +
-          '<div class="subcards">' + subcardsHtml + '</div>' +
-          '<div class="add-row">' +
-            '<input type="text" placeholder="세부 카드 추가" data-role="sub-input">' +
-            '<button data-action="add-sub">추가</button>' +
           '</div>' +
         '</div>' +
         '<div class="resize-handle" data-role="resize"></div>';
@@ -724,19 +650,6 @@
       state.cards = state.cards.filter(function (c) { return c.id !== card.id; });
       save();
       render();
-    } else if (action === "add-sub") {
-      var input = cardEl.querySelector('[data-role="sub-input"]');
-      var title = input.value.trim();
-      if (!title) return;
-      card.subcards.push({ id: uid(), title: title, status: "waiting" });
-      input.value = "";
-      save();
-      render();
-    } else if (action === "remove-sub") {
-      var subId = target.getAttribute("data-sub");
-      card.subcards = card.subcards.filter(function (s) { return s.id !== subId; });
-      save();
-      render();
     } else if (action === "remove-milestone") {
       var milestoneId = target.getAttribute("data-milestone");
       card.milestones = card.milestones.filter(function (m) { return m.id !== milestoneId; });
@@ -791,14 +704,6 @@
       card.status = target.value;
       save();
       render();
-    } else if (action === "sub-status") {
-      var subId = target.getAttribute("data-sub");
-      var sub = card.subcards.find(function (s) { return s.id === subId; });
-      if (sub) {
-        sub.status = target.value;
-        save();
-        render();
-      }
     } else if (action === "card-progress") {
       var value = Number(target.value);
       card.progress = value;
@@ -813,9 +718,7 @@
   });
 
   board.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && e.target.matches('[data-role="sub-input"]')) {
-      e.target.nextElementSibling.click();
-    } else if (e.key === "Enter" && e.target.matches('[data-role="mark-input"]')) {
+    if (e.key === "Enter" && e.target.matches('[data-role="mark-input"]')) {
       e.target.parentElement.querySelector(".confirm").click();
     } else if (e.key === "Escape" && e.target.matches('[data-role="mark-input"]')) {
       e.target.parentElement.querySelector(".cancel").click();
