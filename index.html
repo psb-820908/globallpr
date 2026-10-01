@@ -14,6 +14,7 @@
     --hub: #6366f1;
     --waiting: #64748b;
     --collecting: #3b82f6;
+    --labeling: #06b6d4;
     --training: #f59e0b;
     --ready: #22c55e;
   }
@@ -150,6 +151,7 @@
   }
   select.status.waiting { background: var(--waiting); }
   select.status.collecting { background: var(--collecting); }
+  select.status.labeling { background: var(--labeling); }
   select.status.training { background: var(--training); }
   select.status.ready { background: var(--ready); }
 
@@ -362,6 +364,7 @@
 <div class="legend">
   <span style="background:var(--waiting)">대기 중</span>
   <span style="background:var(--collecting)">데이터 확보 중</span>
+  <span style="background:var(--labeling)">라벨링 대기</span>
   <span style="background:var(--training)">학습 준비 중</span>
   <span style="background:var(--ready)">준비 완료</span>
 </div>
@@ -381,10 +384,11 @@
   var STATUS_LABELS = {
     waiting: "대기 중",
     collecting: "데이터 확보 중",
+    labeling: "라벨링 대기",
     training: "학습 준비 중",
     ready: "준비 완료"
   };
-  var STATUS_ORDER = ["waiting", "collecting", "training", "ready"];
+  var STATUS_ORDER = ["waiting", "collecting", "labeling", "training", "ready"];
   var PRIORITY_ORDER = ["한국", "중국", "유럽", "미국"];
   var DEFAULT_HEIGHT = 0; // 0 = auto height
 
